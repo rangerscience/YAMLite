@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using System;
 
 public class YAMLite {
 	public class Node : Dictionary<string, Node> {
@@ -97,15 +97,20 @@ public class YAMLite {
 		}
 	}
 	
+	public static Node parse(string yaml) {
+		yaml = yaml.TrimStart('\n');
+		if(yaml.StartsWith("---")) { yaml = yaml.Remove(0,3); }
+		yaml = yaml.TrimStart('\n');
+		return _parse(ref yaml, 0);
+	}
 	
-	public static Node parse(ref string yaml, int indentLevel) {
+	public static Node _parse(ref string yaml, int indentLevel) {
 		
 		//Detect unindented array
 		bool unIndentedArray = false;
 		if(yaml[0] == '\n' && yaml.Remove(0,1).TrimStart(' ')[0] == '-') {
 			int _indentLevel = yaml.Remove(0,1).Length - yaml.Remove(0,1).TrimStart(' ').Length;
 			if(_indentLevel + 2 == indentLevel) {
-				Console.WriteLine("Unindented Array");
 				yaml = yaml.Remove(0,1);
 				unIndentedArray = true;
 			}
@@ -118,11 +123,9 @@ public class YAMLite {
 			
 			switch(c) {
 			case ' ':
-				Console.WriteLine("Spaces");
 				yaml = yaml.TrimStart(' ');
 				break;
 			case '\n':
-				Console.WriteLine("Newline: " + yaml);
 				yaml = yaml.Remove(0,1);
 				int _indentLevel = yaml.Length - yaml.TrimStart(' ').Length;
 				if(unIndentedArray) { _indentLevel += 2; }
@@ -132,18 +135,16 @@ public class YAMLite {
 				}
 				break;
 			case '-':
-				Console.WriteLine("Array");
 				yaml = arrayCount++.ToString() + ": " + yaml.Remove(0,1);
 				break;
 			default:
-				Console.WriteLine("Default");
 				string sym = String.Join("", yaml.TakeWhile( (_c) => _c != ':' && _c != '\n'));
 				yaml = yaml.Remove(0, sym.Length);
 				
 				if(yaml.Length > 0 && yaml[0] == ':') {
 					yaml = yaml.Remove(0,1).TrimStart(' ');
 					
-					n.Add(sym, parse(ref yaml, indentLevel + (unIndentedArray ? 0 : 2)));
+					n.Add(sym, _parse(ref yaml, indentLevel + (unIndentedArray ? 0 : 2)));
 				} else {
 					n.leaf = sym;
 					return n;
